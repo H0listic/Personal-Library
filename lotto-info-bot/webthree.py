@@ -16,7 +16,6 @@ bot = telegram.Bot(config.tg_Token)
 
 async def connect_to_chain():
     try:
-        # Create a Web3 instance
         w3 = Web3(Web3.HTTPProvider(config.arbMain))
 
         # Check if connected successfully
@@ -38,7 +37,6 @@ async def retrieve_lottery_id(w3):
         return
 
     try:
-        # Create a contract instance
         contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=contract_abi.ABI)
 
         # Fetch current lottery ID and update Global variable if necessary
@@ -73,12 +71,11 @@ async def get_lottery_details(w3):
 
 async def run_periodic_task():
     while True:
-        await main()  # Run your main function
-        await asyncio.sleep(3600)  # Sleep for 1 hour (3600 seconds)
+        await main()  on
+        await asyncio.sleep(3600)
 
 
 async def main():
-    # Connect to Ethereum
     w3_instance = await connect_to_chain()
 
     if w3_instance:
