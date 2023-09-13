@@ -12,24 +12,20 @@ PRIZE_POOL = 0
 
 
 async def fetch_prize_pool(CONTRACT_ADDRESS, ARBWETH):
-    global PRIZE_POOL  # Access the global variable
+    global PRIZE_POOL
 
     while True:
         try:
             web3 = Web3(Web3.HTTPProvider(config.arbMain))
             token_abi = contract_abi.WETH_ABI
-
-            # Create the contract object without await
             token_contract = web3.eth.contract(address=ARBWETH, abi=token_abi)
-
-            # Fetch the balance using a synchronous call
             balance = token_contract.functions.balanceOf(CONTRACT_ADDRESS).call()
 
-            # Update PRIZE_POOL with the new value
-            PRIZE_POOL = balance / 10 ** 18  # Convert from Wei to ETH
+            # Update PRIZE_POOL with the new value & convert from GWEI to WETH
+            PRIZE_POOL = balance / 10 ** 18  
             # print(PRIZE_POOL)
 
-            # Sleep for 1 minute before fetching again
+            # Check once per minute for changes to PRIZE_POOL
             await asyncio.sleep(60)
         except Exception as e:
             print(f"Error fetching prize pool: {e}")
