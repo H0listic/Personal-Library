@@ -7,7 +7,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-SPREADSHEET_ID = "1cd7O7CZNu8gf1ox8sLgHgvdnH6cKZBpNncUqbEjWHuM"
+SPREADSHEET_ID = "spreadsheet_id"
 
 
 def authenticate():
@@ -129,7 +129,7 @@ def add_entry_to_sheets(service, token_contract, date, symbol, base_token_price_
 
 def get_pool_contract(service, token_symbol):
     try:
-        # Define the range to search for the token symbol in column C (assuming it's in Sheet1)
+        # Search Column C for Symbols
         range_name = f"Sheet1!C2:C1000"
         result = service.spreadsheets().values().get(
             spreadsheetId=SPREADSHEET_ID,
