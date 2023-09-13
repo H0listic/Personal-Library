@@ -11,12 +11,12 @@ def format_entry_embed(token_address, symbol, base_token_price_usd, reserve_in_u
         embed = discord.Embed(
             title="${} - ${:.8f}".format(symbol, base_token_price_usd),
             description="--------------------",
-            color=0x00ff00  # Set the color of the embed (you can choose any color code)
+            color=0x00ff00
         )
 
         embed.add_field(name="Liquidity", value="${:,.2f}".format(reserve_in_usd), inline=False)
         embed.add_field(name="FDV", value="${:,.2f}".format(fdv_usd), inline=False)
-        embed.add_field(name="Token address", value=token_address, inline=False)  # Add the contract field
+        embed.add_field(name="Token address", value=token_address, inline=False)
         embed.add_field(name="Pool address", value=pool_address, inline=False)
         embed.add_field(name="Would you like to add the above token to Google sheets?",
                         value="""Tap 1️⃣ for yes :white_check_mark:
