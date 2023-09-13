@@ -6,6 +6,11 @@ import google_sheets as gs
 import config
 import asyncio
 
+# Constants
+REQUESTS_PER_SECOND = 50
+BUCKET_CAPACITY = REQUESTS_PER_SECOND 
+REFILL_RATE = REQUESTS_PER_SECOND
+
 # Discord bot
 bot_prefix = "."
 intents = discord.Intents.default()
@@ -14,25 +19,18 @@ intents.message_content = True
 bot = commands.Bot(command_prefix=bot_prefix, intents=intents)
 bot.remove_command("help")  # Remove the default help command
 
-# Define rate limit constants
-REQUESTS_PER_SECOND = 50
-BUCKET_CAPACITY = REQUESTS_PER_SECOND  # Initial capacity equals the rate limit
-REFILL_RATE = REQUESTS_PER_SECOND  # Refill the bucket at the same rate as the rate limit
-
-# Initialize the token bucket
+# Token bucket for rate limiting
 token_bucket = BUCKET_CAPACITY
 
 
-# Function to check and consume tokens from the bucket
-async def consume_token():
+# Handle rate limits
+async def rate_limit():
     global token_bucket
     while True:
-        if token_bucket >= 1:
-            token_bucket -= 1
-            await asyncio.sleep(1 / REQUESTS_PER_SECOND)
-        else:
-            await asyncio.sleep(0.1)  # Wait a bit before checking again
-
+        if token_bucket < BUCKET_CAPACITY:
+            token_bucket += 1
+        await asyncio.sleep(1 / REFILL_RATE)
+            
 
 async def extract_data_fields(extracted_data):
     symbol = extracted_data.get("symbol")
@@ -72,15 +70,13 @@ async def entry(ctx, contract, network="eth"):
     await ctx.typing()
     global token_bucket
 
-    # Check if there are enough tokens in the bucket
-    if token_bucket >= 1:
-        # Consume a token and execute the command
-        token_bucket -= 1
+    # Rate limit check
+    await rate_limit()
 
     # Authenticate Google Sheets
     service = gs.authenticate()
 
-    # Call the merged function to fetch and extract data
+    # Fetch and extract data
     extracted_data = await gt.fetch_and_extract_information(network, contract)
 
     if not extracted_data:
@@ -97,7 +93,7 @@ If you don't know the pool address, retrieve it from https://www.geckoterminal.c
         extracted_data)
 
     # Check if the entry exists in Google Sheets
-    exists = gs.entry_exists(service, contract)  # Remove "await" here
+    exists = gs.entry_exists(service, contract)
 
     # Determine the embed formatting based on entry existence
     if exists:
@@ -122,7 +118,7 @@ If you don't know the pool address, retrieve it from https://www.geckoterminal.c
 
         if str(reaction.emoji) == "1️⃣":
             if exists:
-                # Entry exists, handle overwrite logic
+                # Entry exists, handle overwrite
                 try:
                     success = gs.add_entry_to_sheets(service, contract, date, symbol, base_token_price_usd, fdv_usd, reserve_in_usd, pool_address, overwrite=True)  # Remove "await" here
 
@@ -160,12 +156,10 @@ async def p(ctx, token_symbol):
     await ctx.typing()
     global token_bucket
 
-    # Check if there are enough tokens in the bucket
-    if token_bucket >= 1:
-        # Consume a token and execute the command
-        token_bucket -= 1
+    # Rate limit check
+    await rate_limit()
 
-    # Authenticate Google Sheets
+    # Authenticate 
     service = gs.authenticate()
 
     # Check if the ticker exists in Google Sheets
@@ -173,8 +167,8 @@ async def p(ctx, token_symbol):
 
     if pool_contract:
         # Fetch live token price data from Gecko Terminal using the pool contract
-        extracted_data = await gt.fetch_and_extract_information("eth", pool_contract)  # Adjust the network if needed
-
+        extracted_data = await gt.fetch_and_extract_information("eth", pool_contract)
+        
         if extracted_data and "base_token_price_usd" in extracted_data:
             # Convert base_token_price_usd to a float (if it's not already)
             base_token_price_usd = float(extracted_data["base_token_price_usd"])
@@ -193,15 +187,11 @@ async def remove(ctx, token_symbol):
     await ctx.typing()
     global token_bucket
 
-    # Check if there are enough tokens in the bucket
-    if token_bucket >= 1:
-        # Consume a token and execute the command
-        token_bucket -= 1
+    # Rate limit check
+    await rate_limit()
 
-    # Convert the user input to uppercase
+    # Errro handling and authenticate
     token_symbol = token_symbol.upper()
-
-    # Authenticate Google Sheets
     service = gs.authenticate()
 
     # Check if the ticker exists in Google Sheets
@@ -219,8 +209,7 @@ async def remove(ctx, token_symbol):
         return
 
     # Fetch and extract data for the pool_contract
-    extracted_data = await gt.fetch_and_extract_information("eth", pool_contract)  # Adjust the network if needed
-
+    extracted_data = await gt.fetch_and_extract_information("eth", pool_contract) 
     if not extracted_data:
         await ctx.send(f"{ctx.author.mention} - Failed to fetch data for Pool Contract: **{pool_contract}**")
         return
@@ -243,8 +232,8 @@ async def remove(ctx, token_symbol):
         reaction, _ = await bot.wait_for("reaction_add", timeout=60.0, check=reaction_check)
 
         if str(reaction.emoji) == "1️⃣":
-            # Entry exists, remove it
-            success = gs.remove_entry_from_sheets(service, token_symbol)  # Use your existing function to remove based on token symbol
+            # User reacted with Emoji 1, remove entry
+            success = gs.remove_entry_from_sheets(service, token_symbol) 
 
             if success:
                 await ctx.send(f"@everyone - Entry for '{token_symbol}' removed from Google Sheets.")
@@ -255,7 +244,6 @@ async def remove(ctx, token_symbol):
             # User reacted with Emoji 2, don't remove the entry
             await ctx.send(f"{ctx.author.mention} - Entry for '{token_symbol}' not removed from Google Sheets.")
 
-        # Delete the prompt message
         await prompt_message.delete()
 
     except asyncio.TimeoutError:
@@ -268,16 +256,15 @@ async def clear(ctx, amount: int = 5):
     await ctx.typing()
     global token_bucket
 
-    # Check if there are enough tokens in the bucket
-    if token_bucket >= 1:
-        # Consume a token and execute the command
-        token_bucket -= 1
+    # Rate limit check
+    await rate_limit()
 
-    if ctx.author.guild_permissions.manage_messages:  # Check if the user has permission to manage messages
-        if amount < 1 or amount > 100:  # Limit the number of messages to be between 1 and 100
+    # Check user permissions and execute delete messages
+    if ctx.author.guild_permissions.manage_messages:
+        if amount < 1 or amount > 100: 
             await ctx.send("Please provide a number between 1 and 100.")
         else:
-            await ctx.channel.purge(limit=amount + 1)  # Delete the specified number of messages
+            await ctx.channel.purge(limit=amount + 1)
             await ctx.send(f"{ctx.author.mention}, {amount} messages deleted.", delete_after=5)
     else:
         await ctx.send("You don't have permission to manage messages.")
