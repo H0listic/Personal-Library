@@ -25,11 +25,9 @@ async def send_periodic_lottery_details(bot, channel_id, contract, current_lotte
                 # Initialize the contract object inside the loop with the correct Web3 instance
                 contract = w3.eth.contract(address=webthree.CONTRACT_ADDRESS, abi=contract_abi.ABI)
 
-                # Get the lottery details
                 lottery_details = await webthree.get_lottery_details(w3)
-
+                
                 if lottery_details is not None:
-                    # Format the lottery details using the formatting function
                     message = formatting.format_lottery_details(lottery_details)
 
                     # Send the message to the admin channel
@@ -52,14 +50,14 @@ async def send_periodic_lottery_details(bot, channel_id, contract, current_lotte
             pass
             print(f"Error sending lottery details: {e}")
 
-        # Wait for 1 hour (3600 seconds) before sending the next message
-        await asyncio.sleep(1800)
+        # Wait 1 hour before repeating
+        await asyncio.sleep(3600)
 
 
 async def fetch_prize_pool_background(CONTRACT_ADDRESS, ARBWETH):
+        """Update the prize pool in background."""
     while True:
         try:
-            # Fetch the prize pool in the background
             balance = await formatting.fetch_prize_pool(CONTRACT_ADDRESS, ARBWETH)
             print(f"Prize pool updated: {balance} GWEI")
         except Exception as e:
@@ -85,11 +83,11 @@ async def lottery(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def main():
     bot = telegram.Bot(config.tg_Token)
-    w3 = await webthree.connect_to_chain()  # Await to get the Web3 instance
+    w3 = await webthree.connect_to_chain()
 
     if w3:
         contract = w3.eth.contract(address=webthree.CONTRACT_ADDRESS, abi=contract_abi.ABI)
-        current_lottery_id = None  # Initialize current_lottery_id here
+        current_lottery_id = None 
 
         # Create the Application instance and pass it your bot's token.
         application = Application.builder().token(config.tg_Token).build()
